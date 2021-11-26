@@ -1,6 +1,5 @@
 package github.pitbox46.veldmg;
 
-import com.mojang.datafixers.util.Pair;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.entity.player.ServerPlayerEntity;
@@ -14,9 +13,14 @@ import net.minecraftforge.event.entity.living.LivingDamageEvent;
 import net.minecraftforge.event.entity.living.LivingHurtEvent;
 import net.minecraftforge.event.entity.player.CriticalHitEvent;
 import net.minecraftforge.eventbus.api.Event;
+import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ExtensionPoint;
 import net.minecraftforge.fml.LogicalSide;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.network.FMLNetworkConstants;
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -30,6 +34,7 @@ public class VelDmg {
     private static final Map<ServerPlayerEntity, Vector3d> PREVIOUS_POS = new HashMap<>();
 
     public VelDmg() {
+        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.DISPLAYTEST, () -> Pair.of(() -> FMLNetworkConstants.IGNORESERVERONLY, (a, b) -> true));
         MinecraftForge.EVENT_BUS.register(this);
     }
 
@@ -39,6 +44,8 @@ public class VelDmg {
         if(dmgType.equals("mob") || dmgType.equals("player")) {
             Entity attacker = event.getSource().getTrueSource();
             Entity victim = event.getEntity();
+
+            if(attacker == null || victim == null) return;
 
             Vector3d attackerVel;
             if (attacker instanceof ServerPlayerEntity && PREVIOUS_POS.containsKey((ServerPlayerEntity) attacker))
@@ -54,7 +61,6 @@ public class VelDmg {
             Vector3d relPos = victim.getPositionVec().subtract(attacker.getPositionVec());
             Vector3d relVel = attackerVel.subtract(victimVel);
 
-            // Cosine of two vectors multiplied by magnitude of velocity and an arbitrary coefficient
             double multiplier = (relPos.dotProduct(relVel)) / relPos.length();
 
             if(multiplier < -0.9) multiplier = -0.9;
@@ -77,7 +83,7 @@ public class VelDmg {
         }
     }
 
-    @SubscribeEvent
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
     public void onCriticalHit(CriticalHitEvent event) {
         event.setResult(Event.Result.DENY);
     }
